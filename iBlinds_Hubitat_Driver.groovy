@@ -85,7 +85,13 @@ metadata {
 
 
 		main(["blind"])
-	details(["blind", "levelval", "battery", "levelSliderControl",  "refresh","config"])
+	    details(["blind", "levelval", "battery", "levelSliderControl",  "refresh","config"])
+
+	preferences {
+        
+        input name: "time", type: "time", title: "Check battery level every day at: ", description: "Enter time", defaultValue: "2019-01-01T12:00:00.000-0600", required: true, displayDuringSetup: true
+        input name: "reverse", type: "bool", title: "Reverse", description: "Reverse Blind Direction", required: true
+	 }
    
 
 	}
@@ -181,14 +187,20 @@ def on() {
 
 def off() {
 	
-			
+		   if(reverse)
+           {
             sendEvent(name: "switch", value: "off")
             sendEvent(name: "windowShade", value: "closed")
-            sendEvent(name: "level", value: 0, unit: "%")
-           
-         
+            sendEvent(name: "level", value: 99, unit: "%")     
+            zwave.basicV1.basicSet(value: 0x63).format()
+		   }
+		   else
+		   {
+			sendEvent(name: "switch", value: "off")
+            sendEvent(name: "windowShade", value: "closed")
+            sendEvent(name: "level", value: 0, unit: "%")     
             zwave.basicV1.basicSet(value: 0x00).format()
-     
+		   }
 }
 
 def open() {
@@ -210,7 +222,13 @@ def setLevel(value) {
 	log.debug "setLevel >> value: $value"
 	def valueaux = value as Integer
 	def level = Math.max(Math.min(valueaux, 99), 0)
-	
+	valueaux=level
+    
+	 if(reverse)
+     {
+       level = 99 - level
+     }
+
     if (level <= 0) {
     	 sendEvent(name: "switch", value: "off")
          sendEvent(name: "windowShade", value: "closed")
@@ -225,7 +243,7 @@ def setLevel(value) {
     }
     
  
-	sendEvent(name: "level", value: level, unit: "%")
+	sendEvent(name: "level", value: valueaux, unit: "%")
     zwave.basicV1.basicSet(value: level).format()
   
     
