@@ -282,6 +282,28 @@ def poll() {
 }
 **/
 
+def installed() {
+    // When device is installed get battery level and set daily schedule for battery refresh
+    log.debug "Installed, Set Get Battery Schedule"
+    runIn(15, "getBattery")
+    schedule("$time", "getBattery")
+}
+
+def updated() {
+    // When device is updated get battery level and set daily schedule for battery refresh
+    log.debug "Updated , Set Get Battery Schedule"
+    runIn(15, "getBattery")
+    schedule("$time", "getBattery")
+}
+
+def getBattery() {
+    log.debug "Get battery level"
+    sendHubCommand(
+        new hubitat.device.HubAction(zwave.batteryV1.batteryGet().format(),
+                                     hubitat.device.Protocol.ZWAVE)
+    )
+}
+
 def refresh() {
     log.trace "refresh(started)"
     log.debug "Refresh Tile Pushed"
