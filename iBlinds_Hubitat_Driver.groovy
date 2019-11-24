@@ -85,7 +85,8 @@ metadata {
         details(["blind", "levelval", "battery", "levelSliderControl",  "refresh","config"])
 
         preferences {
-            input name: "time", type: "time", title: "Check battery level every day at: ", description: "Enter time", defaultValue: "2019-01-01T12:00:00.000-0600", required: true, displayDuringSetup: true
+            input name: "openPosition", type: "number", title: "Open Position", description: "Position to open to by default:", defaultValue: 50, required: true
+            input name: "time", type: "time", title: "Check battery level every day at: ", description: "Enter time", defaultValue: "12:00:00.000", required: true, displayDuringSetup: true
             input name: "reverse", type: "bool", title: "Reverse", description: "Reverse Blind Direction", required: true
         }
     }
@@ -194,8 +195,7 @@ def zwaveEvent(hubitat.zwave.Command cmd) {
 
 def on() {
     log.trace "on"
-    //  To modify "on" position change 50 to the percentage you want displayed
-    setLevel(50)
+    setLevel(openPosition)
 }
 
 def off() {
