@@ -175,6 +175,18 @@ def zwaveEvent(hubitat.zwave.commands.switchmultilevelv1.SwitchMultilevelStopLev
     [createEvent(name:"switch", value:"on"), response(zwave.switchMultilevelV1.switchMultilevelGet().format())]
 }
 
+def zwaveEvent(hubitat.zwave.commands.batteryv1.BatteryReport cmd) {
+    log.debug "BatteryReport $cmd"
+    def map = [ name: "battery", unit: "%" ]
+    if (cmd.batteryLevel == 0xFF) {
+        map.value = 1
+        map.descriptionText = "${device.displayName} has a low battery"
+    } else {
+        map.value = cmd.batteryLevel
+    }
+    createEvent(map)
+}
+
 def zwaveEvent(hubitat.zwave.Command cmd) {
     // Handles all Z-Wave commands we aren't interested in
     [:]
@@ -256,16 +268,6 @@ def setLevel(value, duration) {
     zwave.switchMultilevelV2.switchMultilevelSet(value: level, dimmingDuration: dimmingDuration).format()
 }
 
-def zwaveEvent(hubitat.zwave.commands.batteryv1.BatteryReport cmd) {
-    def map = [ name: "battery", unit: "%" ]
-    if (cmd.batteryLevel == 0xFF) {
-        map.value = 1
-        map.descriptionText = "${device.displayName} has a low battery"
-    } else {
-        map.value = cmd.batteryLevel
-    }
-    createEvent(map)
-}
 
 /**
 def poll() {
