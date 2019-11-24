@@ -193,27 +193,14 @@ def zwaveEvent(hubitat.zwave.Command cmd) {
 }
 
 def on() {
+    log.trace "on"
     //  To modify "on" position change 50 to the percentage you want displayed
-    sendEvent(name: "level", value: 50, unit: "%")
-    sendEvent(name: "switch", value: "on")
-    sendEvent(name: "windowShade", value: "open")
-
-    // To modify "on" change the 0x32 (hex) Value to the position you want to move to when on command is sent
-    zwave.basicV1.basicSet(value: 0x32).format()
+    setLevel(50)
 }
 
 def off() {
-    if(reverse) {
-        sendEvent(name: "switch", value: "off")
-        sendEvent(name: "windowShade", value: "closed")
-        sendEvent(name: "level", value: 99, unit: "%")
-        zwave.basicV1.basicSet(value: 0x63).format()
-    } else {
-        sendEvent(name: "switch", value: "off")
-        sendEvent(name: "windowShade", value: "closed")
-        sendEvent(name: "level", value: 0, unit: "%")
-        zwave.basicV1.basicSet(value: 0x00).format()
-    }
+    log.trace "off()"
+    setLevel(0)
 }
 
 def open() {
@@ -231,43 +218,23 @@ def setPosition(value) {
     setLevel(value)
 }
 
-def setLevel(value) {
-    log.debug "setLevel >> value: $value"
-    def valueaux = value as Integer
-    def level = Math.max(Math.min(valueaux, 99), 0)
-    valueaux=level
+def setLevel(value, duration=0) {
+    log.debug "setLevel >> value: $value, duration: $duration"
+    def level = Math.max(Math.min(value as Integer, 99), 0)
 
-    if(reverse) {
-      level = 99 - level
-    }
-
-    if (level <= 0) {
+    if (level <= 0 || level >= 99) {
          sendEvent(name: "switch", value: "off")
          sendEvent(name: "windowShade", value: "closed")
-    }
-    if (level > 0 && level < 99) {
+    } else {
         sendEvent(name: "switch", value: "on")
         sendEvent(name: "windowShade", value: "open")
     }
-    if (level >= 99) {
-         sendEvent(name: "switch", value: "off")
-         sendEvent(name: "windowShade", value: "closed")
-    }
 
-    sendEvent(name: "level", value: valueaux, unit: "%")
-    zwave.basicV1.basicSet(value: level).format()
-
-}
-
-def setLevel(value, duration) {
-    log.debug "setLevel >> value: $value, duration: $duration"
-    def valueaux = value as Integer
-    def level = Math.max(Math.min(valueaux, 99), 0)
+    sendEvent(name: "level", value: level, unit: "%")
+    def setLevel = reverse ? 99 - level : level
     def dimmingDuration = duration < 128 ? duration : 128 + Math.round(duration / 60)
-    def getStatusDelay = duration < 128 ? (duration*1000)+2000 : (Math.round(duration / 60)*60*1000)+2000
-    zwave.switchMultilevelV2.switchMultilevelSet(value: level, dimmingDuration: dimmingDuration).format()
+    zwave.switchMultilevelV2.switchMultilevelSet(value: setLevel, dimmingDuration: dimmingDuration).format()
 }
-
 
 /**
 def poll() {
