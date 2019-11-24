@@ -126,14 +126,28 @@ def zwaveEvent(hubitat.zwave.commands.switchmultilevelv1.SwitchMultilevelSet cmd
 }
 
 private dimmerEvents(hubitat.zwave.Command cmd) {
-    def value = (cmd.value ? "on" : "off")
-    def result = [createEvent(name: "switch", value: value)]
-    if (cmd.value && cmd.value <= 100) {
-        result << createEvent(name: "level", value: cmd.value, unit: "%")
+    log.debug "Dimmer event: $cmd"
+    def position = cmd.value
+    if (reverse) {
+        position = 99 - position
+    }
+
+    def switchValue = "off"
+    def shadePosition = "closed"
+    if (position > 0 && position < 99) {
+        switchValue = "on"
+        shadePosition = "open"
+    }
+    def result = [
+        createEvent(name: "switch", value: switchValue),
+        createEvent(name: "windowShade", value: shadePosition)
+    ]
+
+    if (position < 100) {
+        result << createEvent(name: "level", value: position, unit: "%")
     }
     return result
 }
-
 
 def zwaveEvent(hubitat.zwave.commands.configurationv1.ConfigurationReport cmd) {
     log.debug "ConfigurationReport $cmd"
