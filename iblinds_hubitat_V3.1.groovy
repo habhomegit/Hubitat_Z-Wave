@@ -12,10 +12,11 @@
  *
  *		Written by: Chance H, 6-26-20
  *      Update Eric B, 08-14-20 - Fix Configuration and Set Level/Set Position
+ *		Update Chance H, 06-10-21 - Add Fingerprint for V3.10+, Add Parameter 7
  *
  */
 metadata {
-	definition (name: "iblinds V3.1", namespace: "iblinds Hubitat", author: "HAB") {
+	definition (name: "iblinds V3.10", namespace: "iblinds Hubitat", author: "HAB") {
 		capability "Switch Level"
 		capability "Actuator"
 		capability "Switch"
@@ -25,9 +26,10 @@ metadata {
    
 
 	//	fingerprint inClusters: "0x26"
-   fingerprint type: "1106", cc: "5E,85,59,86,72,5A,73,26,25,80"
-    
-	}
+   	fingerprint type: "1106", cc: "5E,85,59,86,72,5A,73,26,25,80"
+	fingerprint mfr:"0287", prod:"0003", model:"000D", deviceJoinName: "iBlinds V2"
+	fingerprint mfr:"0287", prod:"0004", model:"0071", deviceJoinName: "iBlinds V3"
+    fingerprint mfr:"0287", prod:"0004", model:"0072", deviceJoinName: "iBlinds V3.10+"
 
 	simulator {
 		status "on":  "command: 2003, payload: FF"
@@ -92,6 +94,7 @@ metadata {
         input name: "NVM_Target_Value",type: "number", title: "Default ON Value",defaultValue: 50, range: "1..100",  description: "Used to set the default ON level when manual push button is pushed",required: true, displayDuringSetup:false
         input name: "NVM_Device_Reset_Support",type: "bool",title: "Disable Reset Button", description: "Used for situations where the buttons are being held down accidentally via a tight space, etc.", defaultValue: false
         input name: "Speed_Parameter",type: "number",title: "Open/Close Speed(seconds)", 	defaultValue: 0, range:"0..100",	description: "To slow down the blinds, increase the value",required: true, displayDuringSetup: false
+		input name: "Init_Calib", type: "bool", title: "Initiate Calibration", defaultValue: false, description: "Will begin calibration after the next command is sent", displayDuringSetup: false
  	}
     
 
@@ -272,6 +275,7 @@ def configureParams() {
     4					1			NVM_Target_Value		  Default on position
     5					1			NVM_Device_Reset_Support  Turns off the reset button
     6    				1			Speed_Parameter			  Speed
+	7					1			Init_Calib				  Initiate Calibration 
     */
     
     // Set Boolean Values 	
@@ -306,6 +310,11 @@ def configureParams() {
     }
     if ( state.param6 != Speed_Parameter ) {
         cmds << zwave.configurationV1.configurationSet(parameterNumber: 6, size: 1, configurationValue: [Speed_Parameter.toInteger()]).format()  
+	}
+	if (Init_Calib != null && state.param7 != Init_Calib) {
+		def Init_Calib = boolToInteger(Init_Calib)
+
+		cmds << zwave.configurationV1.configurationSet(parameterNumber: 7, size: 1, configurationValue: [Init_Calib.toInteger()]).format()
 	}
     
         log.info "Cmds: " + cmds
