@@ -88,7 +88,7 @@ metadata {
         
         input name: "time", type: "time", title: "Check battery level every day at: ", description: "Enter time", defaultValue: "2019-01-01T12:00:00.000-0600", required: true, displayDuringSetup: true
         input name: "closePosition", type: "number", title: "Close Position", description: "Default OFF Value", defaultValue: 0, required: true
-        input name: "NVM_TightLevel",type: "number",title: "Close Interval",defaultValue: 22,description: "Smaller value will make the blinds close tighter",required: true, displayDuringSetup:true
+        input name: "NVM_TightLevel",type: "number",title: "Close Interval",defaultValue: 22,range:"16..32",description: "Smaller value will make the blinds close tighter",required: true, displayDuringSetup:true
         input name: "NVM_Direction",type: "bool",title: "Reverse",description: "Reverse Blind Direction", defaultValue: false
         input name: "NVM_Target_Value",type: "number", title: "Default ON Value",defaultValue: 50, range: "1..100",  description: "Used to set the default ON level when manual push button is pushed",required: true, displayDuringSetup:false
         input name: "NVM_Device_Reset_Support",type: "bool",title: "Disable Reset Button", description: "Used for situations where the buttons are being held down accidentally via a tight space, etc.", defaultValue: false
