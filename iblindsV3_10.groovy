@@ -93,14 +93,14 @@ metadata {
         input name: "NVM_Target_Value",type: "number", title: "Default ON Value",defaultValue: 50, range: "1..100",  description: "Used to set the default ON level when manual push button is pushed",required: true, displayDuringSetup:false
         input name: "NVM_Device_Reset_Support",type: "bool",title: "Disable Reset Button", description: "Used for situations where the buttons are being held down accidentally via a tight space, etc.", defaultValue: false
         input name: "Speed_Parameter",type: "number",title: "Open/Close Speed(seconds)", 	defaultValue: 0, range:"0..100",	description: "To slow down the blinds, increase the value",required: true, displayDuringSetup: false
-		input name: "Init_Calib", type: "bool", title: "Initiate Calibration", defaultValue: false, description: "Will begin calibration after the next command is sent (V3.06+)", displayDuringSetup: false
+		input name: "Init_Calib", type: "bool", title: "Initiate Calibration", defaultValue: false, description: "Will begin calibration after the next command is sent (V3.06+). Change to false when complete", displayDuringSetup: false
 		input name: "MinTilt",type: "number", title: "Lower close value",defaultValue: 0, range: "0..25",  description: "Increase if lower interval is closing too tightly.",required: true, displayDuringSetup:false
 		input name: "MaxTilt",type: "number", title: "Upper close value",defaultValue: 100, range: "75..100",  description: "Increase if upper interval is closing too tightly.",required: true, displayDuringSetup:false
 		input name: "ReMap",type: "bool", title: "Re-map to 0x63",defaultValue: false, description:"Not applicable to Hubitat",required: true, displayDuringSetup:false
 		input name: "MultiChange",type: "bool", title: "Allow MultiLevelStopChange",defaultValue: false,  description: "Allows use of MultiLevelStopChange",required: true, displayDuringSetup:false
  	}
     
-
+}
 def parse(String description) {
 	def result = null
 	if (description != "updated") {
@@ -335,7 +335,7 @@ def configureParams() {
 	}
 	if ( state.param11 != MultiChange ) {
 		def MultiChange = boolToInteger(MultiChange)
-        cmds << zwave.configurationV1.configurationSet(parameterNumber: 11, size: 1, configurationValue: MultiChange.toInteger()]).format()  
+        cmds << zwave.configurationV1.configurationSet(parameterNumber: 11, size: 1, configurationValue: [MultiChange.toInteger()]).format()  
 	}	
     
         log.info "Cmds: " + cmds
@@ -390,4 +390,4 @@ String secureCmd(cmd) {
     } else {
 		return secure(cmd)
     }	
-}    
+}
