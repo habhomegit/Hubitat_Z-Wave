@@ -12,7 +12,7 @@
  *
  *		Written by: Chance H, 6-26-20
  *      Update Eric B, 08-14-20 - Fix Configuration and Set Level/Set Position
- *		Update Chance H, 06-10-21 - Add Fingerprint for V3.10+, Add Parameter 7
+ *		Update Chance H, 06-11-21 - Add Fingerprint for V3.10+, Add Parameters 7 - 11 for V3.06+
  *
  */
 metadata {
@@ -94,6 +94,10 @@ metadata {
         input name: "NVM_Device_Reset_Support",type: "bool",title: "Disable Reset Button", description: "Used for situations where the buttons are being held down accidentally via a tight space, etc.", defaultValue: false
         input name: "Speed_Parameter",type: "number",title: "Open/Close Speed(seconds)", 	defaultValue: 0, range:"0..100",	description: "To slow down the blinds, increase the value",required: true, displayDuringSetup: false
 		input name: "Init_Calib", type: "bool", title: "Initiate Calibration", defaultValue: false, description: "Will begin calibration after the next command is sent (V3.06+)", displayDuringSetup: false
+		input name: "MinTilt",type: "number", title: "Lower close value",defaultValue: 0, range: "0..25",  description: "Increase if lower interval is closing too tightly.",required: true, displayDuringSetup:false
+		input name: "MaxTilt",type: "number", title: "Upper close value",defaultValue: 100, range: "75..100",  description: "Increase if upper interval is closing too tightly.",required: true, displayDuringSetup:false
+		input name: "ReMap",type: "bool", title: "Re-map to 0x63",defaultValue: false, description:"Not applicable to Hubitat",required: true, displayDuringSetup:false
+		input name: "MultiChange",type: "bool", title: "Allow MultiLevelStopChange",defaultValue: false,  description: "Allows use of MultiLevelStopChange",required: true, displayDuringSetup:false
  	}
     
 
@@ -275,6 +279,10 @@ def configureParams() {
     5					1			NVM_Device_Reset_Support  Turns off the reset button
     6    				1			Speed_Parameter			  Speed
 	7					1			Init_Calib				  Initiate Calibration 
+	8					1			MinTilt						Minimum Tilt value
+	9					1			MaxTilt						Maximum Tilt value
+	10 					1			ReMap						Remap 0xFF to 0x63 for certain hubs
+	11					1			MultiChange					Allow for MultiLevelStopChange
     */
     
     // Set Boolean Values 	
@@ -315,6 +323,20 @@ def configureParams() {
 
 		cmds << zwave.configurationV1.configurationSet(parameterNumber: 7, size: 1, configurationValue: [Init_Calib.toInteger()]).format()
 	}
+	if ( state.param8 != MinTilt ) {
+        cmds << zwave.configurationV1.configurationSet(parameterNumber: 8, size: 1, configurationValue: [MinTilt.toInteger()]).format()  
+	}
+	if ( state.param9 != MaxTilt ) {
+        cmds << zwave.configurationV1.configurationSet(parameterNumber: 9, size: 1, configurationValue: [MaxTilt.toInteger()]).format()  
+	}
+	if ( state.param10 != ReMap ) {
+		def ReMap = boolToInteger(ReMap)
+        cmds << zwave.configurationV1.configurationSet(parameterNumber: 10, size: 1, configurationValue: [ReMap.toInteger()]).format()  
+	}
+	if ( state.param11 != MultiChange ) {
+		def MultiChange = boolToInteger(MultiChange)
+        cmds << zwave.configurationV1.configurationSet(parameterNumber: 11, size: 1, configurationValue: MultiChange.toInteger()]).format()  
+	}	
     
         log.info "Cmds: " + cmds
         commands(cmds) 
@@ -342,6 +364,12 @@ private storeParamState() {
     state.param4 = NVM_Target_Value
     state.param5 = NVM_Device_Reset_Support
     state.param6 = Speed_Parameter
+	state.param7 = Init_Calib
+	state.param8 = MinTilt
+	state.param9 = MaxTilt
+	state.param10 = ReMap
+	state.param11 = MultiChange
+	
 }
 
 def boolToInteger(boolValue) {
