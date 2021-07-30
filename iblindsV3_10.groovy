@@ -28,7 +28,7 @@ metadata {
 	//	fingerprint inClusters: "0x26"
    	fingerprint type: "1106", cc: "5E,85,59,86,72,5A,73,26,25,80"
 	fingerprint mfr:"0287", prod:"0004", model:"0071", deviceJoinName: "iBlinds V3"
-    fingerprint mfr:"0287", prod:"0004", model:"0072", deviceJoinName: "iBlinds V3.10+"
+        fingerprint mfr:"0287", prod:"0004", model:"0072", deviceJoinName: "iBlinds V3.1"
 
 	simulator {
 		status "on":  "command: 2003, payload: FF"
