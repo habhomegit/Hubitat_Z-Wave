@@ -12,10 +12,11 @@
  *
  *		Written by: Chance H, 6-26-20
  *      Update Eric B, 08-14-20 - Fix Configuration and Set Level/Set Position
+ *		Update Chance H, 06-11-21 - Add Fingerprint for V3.10+, Add Parameters 7 - 11 for V3.06+
  *
  */
 metadata {
-	definition (name: "iblinds V3.1", namespace: "iblinds Hubitat", author: "HAB") {
+	definition (name: "iblinds V3.10", namespace: "iblinds Hubitat", author: "HAB") {
 		capability "Switch Level"
 		capability "Actuator"
 		capability "Switch"
@@ -25,9 +26,9 @@ metadata {
    
 
 	//	fingerprint inClusters: "0x26"
-   fingerprint type: "1106", cc: "5E,85,59,86,72,5A,73,26,25,80"
-    
-	}
+   	fingerprint type: "1106", cc: "5E,85,59,86,72,5A,73,26,25,80"
+	fingerprint mfr:"0287", prod:"0004", model:"0071", deviceJoinName: "iBlinds V3"
+    fingerprint mfr:"0287", prod:"0004", model:"0072", deviceJoinName: "iBlinds V3.10+"
 
 	simulator {
 		status "on":  "command: 2003, payload: FF"
@@ -87,14 +88,19 @@ metadata {
         
         input name: "time", type: "time", title: "Check battery level every day at: ", description: "Enter time", defaultValue: "2019-01-01T12:00:00.000-0600", required: true, displayDuringSetup: true
         input name: "closePosition", type: "number", title: "Close Position", description: "Default OFF Value", defaultValue: 0, required: true
-        input name: "NVM_TightLevel",type: "number",title: "Close Interval",defaultValue: 22,description: "Smaller value will make the blinds close tighter",required: true, displayDuringSetup:true
+        input name: "NVM_TightLevel",type: "number",title: "Close Interval",defaultValue: 22,range:"16..32",description: "Smaller value will make the blinds close tighter",required: true, displayDuringSetup:true
         input name: "NVM_Direction",type: "bool",title: "Reverse",description: "Reverse Blind Direction", defaultValue: false
         input name: "NVM_Target_Value",type: "number", title: "Default ON Value",defaultValue: 50, range: "1..100",  description: "Used to set the default ON level when manual push button is pushed",required: true, displayDuringSetup:false
         input name: "NVM_Device_Reset_Support",type: "bool",title: "Disable Reset Button", description: "Used for situations where the buttons are being held down accidentally via a tight space, etc.", defaultValue: false
         input name: "Speed_Parameter",type: "number",title: "Open/Close Speed(seconds)", 	defaultValue: 0, range:"0..100",	description: "To slow down the blinds, increase the value",required: true, displayDuringSetup: false
+		input name: "Init_Calib", type: "bool", title: "Initiate Calibration", defaultValue: false, description: "Will begin calibration after the next command is sent (V3.06+). Change to false when complete", displayDuringSetup: false
+		input name: "MinTilt",type: "number", title: "Lower close value",defaultValue: 0, range: "0..25",  description: "Increase if lower interval is closing too tightly.",required: true, displayDuringSetup:false
+		input name: "MaxTilt",type: "number", title: "Upper close value",defaultValue: 100, range: "75..100",  description: "Increase if upper interval is closing too tightly.",required: true, displayDuringSetup:false
+		input name: "ReMap",type: "bool", title: "Re-map to 0x63",defaultValue: false, description:"Not applicable to Hubitat",required: true, displayDuringSetup:false
+		input name: "MultiChange",type: "bool", title: "Allow MultiLevelStopChange",defaultValue: false,  description: "Allows use of MultiLevelStopChange",required: true, displayDuringSetup:false
  	}
     
-
+}
 def parse(String description) {
 	def result = null
 	if (description != "updated") {
@@ -272,6 +278,11 @@ def configureParams() {
     4					1			NVM_Target_Value		  Default on position
     5					1			NVM_Device_Reset_Support  Turns off the reset button
     6    				1			Speed_Parameter			  Speed
+	7					1			Init_Calib				  Initiate Calibration 
+	8					1			MinTilt						Minimum Tilt value
+	9					1			MaxTilt						Maximum Tilt value
+	10 					1			ReMap						Remap 0xFF to 0x63 for certain hubs
+	11					1			MultiChange					Allow for MultiLevelStopChange
     */
     
     // Set Boolean Values 	
@@ -307,6 +318,25 @@ def configureParams() {
     if ( state.param6 != Speed_Parameter ) {
         cmds << zwave.configurationV1.configurationSet(parameterNumber: 6, size: 1, configurationValue: [Speed_Parameter.toInteger()]).format()  
 	}
+	if (Init_Calib != null && state.param7 != Init_Calib) {
+		def Init_Calib = boolToInteger(Init_Calib)
+
+		cmds << zwave.configurationV1.configurationSet(parameterNumber: 7, size: 1, configurationValue: [Init_Calib.toInteger()]).format()
+	}
+	if ( state.param8 != MinTilt ) {
+        cmds << zwave.configurationV1.configurationSet(parameterNumber: 8, size: 1, configurationValue: [MinTilt.toInteger()]).format()  
+	}
+	if ( state.param9 != MaxTilt ) {
+        cmds << zwave.configurationV1.configurationSet(parameterNumber: 9, size: 1, configurationValue: [MaxTilt.toInteger()]).format()  
+	}
+	if ( state.param10 != ReMap ) {
+		def ReMap = boolToInteger(ReMap)
+        cmds << zwave.configurationV1.configurationSet(parameterNumber: 10, size: 1, configurationValue: [ReMap.toInteger()]).format()  
+	}
+	if ( state.param11 != MultiChange ) {
+		def MultiChange = boolToInteger(MultiChange)
+        cmds << zwave.configurationV1.configurationSet(parameterNumber: 11, size: 1, configurationValue: [MultiChange.toInteger()]).format()  
+	}	
     
         log.info "Cmds: " + cmds
         commands(cmds) 
@@ -334,6 +364,12 @@ private storeParamState() {
     state.param4 = NVM_Target_Value
     state.param5 = NVM_Device_Reset_Support
     state.param6 = Speed_Parameter
+	state.param7 = Init_Calib
+	state.param8 = MinTilt
+	state.param9 = MaxTilt
+	state.param10 = ReMap
+	state.param11 = MultiChange
+	
 }
 
 def boolToInteger(boolValue) {
@@ -354,4 +390,4 @@ String secureCmd(cmd) {
     } else {
 		return secure(cmd)
     }	
-}    
+}
