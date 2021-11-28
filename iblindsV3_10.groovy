@@ -14,6 +14,9 @@
  *      	Update Eric B, 08-14-20 - Fix Configuration and Set Level/Set Position
  *		Update Chance H, 06-11-21 - Add Fingerprint for V3.10+, Add Parameters 7 - 11 for V3.06+
  *		Update Gassgs, 10-06-21 - Add Position attribute updates, added option to turn off logging
+ *   		Update Gassgs, Gary G, 10-06-21 - Start Position Change Open/Close commands, Fixed Position Attribute, Fixed update when button pushed
+ *     		Update Gassgs, Gary G, 10-11-21 - Added stop command while blind is moving over a duration
+ *      	Update Gassgs, Gary G, 11-22-21 - Fixed Battery level attribute update
  *
  */
 metadata {
@@ -49,6 +52,7 @@ metadata {
 		reply "200163,delay 5000,2602": "command: 2603, payload: 63"
 	}
     
+      
       preferences {
         
         input name: "time", type: "time", title: "Check battery level every day at: ", description: "Enter time", defaultValue: "2019-01-01T12:00:00.000-0600", required: true, displayDuringSetup: true
@@ -62,12 +66,12 @@ metadata {
 	input name: "MinTilt",type: "number", title: "Lower close value",defaultValue: 0, range: "0..25",  description: "Increase if lower interval is closing too tightly.",required: true, displayDuringSetup:false
 	input name: "MaxTilt",type: "number", title: "Upper close value",defaultValue: 100, range: "75..100",  description: "Increase if upper interval is closing too tightly.",required: true, displayDuringSetup:false
 	//input name: "ReMap",type: "bool", title: "Re-map to 0x63",defaultValue: false, description:"Not applicable to Hubitat",required: true, displayDuringSetup:false
-	input name: "MultiChange",type: "bool", title: "Allow MultiLevelStopChange",defaultValue: false,  description: "Allows use of MultiLevelStopChange",required: true, displayDuringSetup:false
-        input name: "logEnable",type: "bool", title: "Enable debug logging",defaultValue: false,required: true
+	//input name: "MultiChange",type: "bool", title: "Allow MultiLevelStopChange",defaultValue: false,  description: "Allows use of MultiLevelStopChange",required: true, displayDuringSetup:false
+        input name: "logInfoEnable",type: "bool", title: "Enable text info logging",defaultValue: true,required: true
+        input name: "logEnable",type: "bool", title: "Enable Debug logging",defaultValue: false,required: false
       }
  	}       
 }
-    
 def parse(String description) {
 	def result = null
 	if (description != "updated") {
@@ -105,14 +109,27 @@ def zwaveEvent(hubitat.zwave.commands.switchmultilevelv1.SwitchMultilevelSet cmd
 }
 
 private dimmerEvents(hubitat.zwave.Command cmd) {
-    if (logEnable) log.debug "$cmd"
-	def value = (cmd.value ? "on" : "off")
-	def result = [createEvent(name: "switch", value: value)]
-	if (cmd.value && cmd.value <= 100) {
-		sendEvent(name: "level", value: cmd.value, unit: "%")
-        sendEvent(name: "position", value: cmd.value, unit: "%")
-	}
-    if (logEnable) log.debug "$value"
+   if (logEnable) log.debug "Dimmer events:  $cmd"
+   state.durationActive = false
+   Integer position = cmd.value as Integer
+   String switchValue = "off"
+   String windowShadeState = "closed"
+   if (position > 0 && position < 100) {
+      switchValue = "on"
+      windowShadeState = "open"
+   } 
+   if (position < 100 && device.currentValue("level") != position) {
+      sendEvent(name: "level", value: position, unit: "%")
+   }
+   if (device.currentValue("position") != position) {
+      sendEvent(name: "position", value: position, unit: "%")
+   }
+   if (device.currentValue("switch") != switchValue) {
+      sendEvent(name: "switch", value: switchValue)
+   }
+   if (device.currentValue("windowShade") != windowShadeState) {      
+      sendEvent(name: "windowShade", value: windowShadeState)
+   }      
 }
 
 def zwaveEvent(hubitat.zwave.commands.hailv1.Hail cmd) {
@@ -139,21 +156,23 @@ def zwaveEvent(hubitat.zwave.Command cmd) {
 }
 
 def on() {
-	open()
+		open()
 }
 
 def off() {
-	close()
+		close()
 }
 
 def setPosition(value) {
+    if (logEnable) log.debug "Position $value()"
     setLevel(value)
 }
 
 def setLevel(value, duration=0) {
     if (logEnable) log.debug "setLevel >> value: $value, duration: $duration"
+    if (logInfoEnable) log.info "$device.label setLevel >> value: $value, duration: $duration"
     def level = Math.max(Math.min(value as Integer, 99), 0)
-
+    
     if (level <= 0 || level >= 99) {
          sendEvent(name: "switch", value: "off")
          sendEvent(name: "windowShade", value: "closed")
@@ -161,16 +180,40 @@ def setLevel(value, duration=0) {
         sendEvent(name: "switch", value: "on")
         sendEvent(name: "windowShade", value: "open")
     }
-
     sendEvent(name: "level", value: level, unit: "%")
     sendEvent(name: "position", value: level, unit: "%")
+    durationTime = duration as Integer
+    if (durationTime > 1){
+        state.durationActive = true
+        runIn(durationTime,endDuration)
+    }
     def setLevel = reverse ? 99 - level : level
     def dimmingDuration = duration < 128 ? duration : 128 + Math.round(duration / 60)
     zwave.switchMultilevelV2.switchMultilevelSet(value: setLevel, dimmingDuration: dimmingDuration).format()
 }
 
+def endDuration(){
+    state.durationActive = false
+}   
 
+def stopPositionChange() {
+    if (state.durationActive){
+        if (logInfoEnable) log.info "$device.label STOP()"
+        runIn(1,updatePosition)
+        zwave.switchMultilevelV3.switchMultilevelStopLevelChange().format()
+    }else{
+        if (logEnable) log.debug "$device.label stop() is not supported"
+        if (logInfoEnable)log.info "$device.label stop() is not supported"
+    } 
+}
 
+def startPositionChange(direction) {
+    if (direction == "open") {
+        open()
+    } else {
+       close()
+    }
+}
 
 def zwaveEvent(hubitat.zwave.commands.batteryv1.BatteryReport cmd) {
 	def map = [ name: "battery", unit: "%" ]
@@ -181,6 +224,8 @@ def zwaveEvent(hubitat.zwave.commands.batteryv1.BatteryReport cmd) {
 		map.value = cmd.batteryLevel
 	}
 	createEvent(map)
+    if (logInfoEnable) log.info "$device.label battery level $map.value %"
+    sendEvent(name: "battery", value: "$map.value") 
 }
 
 
@@ -199,46 +244,40 @@ def updated () {
     schedule("$time",getBattery)
     if (logEnable) log.debug "Call Update Params"
     configureParams()
-    //configureParams()
 }
 
 def open() {
 	if (logEnable) log.debug "open()"
+    if (logInfoEnable) log.info "$device.label open()"
 	// Blinds fully open at 50%
 	sendEvent(name: "windowShade", value: "open")
-    	sendEvent(name: "switch",value: "on")
+    sendEvent(name: "switch",value: "on")
 	sendEvent(name: "level", value: NVM_Target_Value, unit: "%", displayed: true)
-    	sendEvent(name: "position", value: NVM_Target_Value, unit: "%", displayed: true)
+    sendEvent(name: "position", value: NVM_Target_Value, unit: "%", displayed: true)
 	zwave.switchMultilevelV3.switchMultilevelSet(value: NVM_Target_Value).format()
 }
 
 def close() {
 	if (logEnable) log.debug "close()"
+    if (logInfoEnable) log.info "$device.label close()"
 	Integer level = reverse ? 99 : 0
 
 	sendEvent(name: "windowShade", value: "closed")
-    	sendEvent(name: "switch",value: "off")
+    sendEvent(name: "switch",value: "off")
 	sendEvent(name: "level", value: closePosition, unit: "%", displayed: true)
-    	sendEvent(name: "position", value: closePosition, unit: "%", displayed: true)
+    sendEvent(name: "position", value: closePosition, unit: "%", displayed: true)
 	zwave.switchMultilevelV3.switchMultilevelSet(value: closePosition).format()
 }
 
-def stopPositionChange() {
-    if (logEnable) log.debug "stop()"
-    if (logEnable) log.debug "$device.label stop() is not supported"
-    //zwave.switchMultilevelV3.switchMultilevelStopLevelChange().format()
-}
 
-def startPositionChange(direction) {
-    if (direction == "open") {
-        open()
-    } else {
-       close()
-    }
+def updatePosition(){
+    if (logEnable) log.debug "switchMultilevelGet"
+    zwave.switchMultilevelV1.switchMultilevelGet().format()
 }
 
 def refresh() {
     if (logEnable) log.debug "Refresh Tile Pushed"
+    if (logInfoEnable) log.info "$device.label refresh()"
     delayBetween([
         zwave.switchMultilevelV1.switchMultilevelGet().format(),
         zwave.batteryV1.batteryGet().format(),
@@ -247,9 +286,10 @@ def refresh() {
 
 def getBattery() {
     if (logEnable) log.debug  "Battery Get..."
-    def cmd = []
-    cmd << new hubitat.device.HubAction(zwave.batteryV1.batteryGet().format())
-    sendHubCommand(cmd)
+    zwave.batteryV1.batteryGet().format()
+    //def cmd = []
+    //cmd << new hubitat.device.HubAction(zwave.batteryV1.batteryGet().format())
+    //sendHubCommand(cmd)
     
 }
 
@@ -323,7 +363,7 @@ def configureParams() {
         cmds << zwave.configurationV1.configurationSet(parameterNumber: 11, size: 1, configurationValue: [MultiChange.toInteger()]).format()  
 	}	
     
-        if (logEnable) log.info "Cmds: " + cmds
+        if (logEnable) log.debug "Cmds: " + cmds
         commands(cmds) 
         storeParamState()
 
