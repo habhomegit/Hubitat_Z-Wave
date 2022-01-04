@@ -114,7 +114,7 @@ private dimmerEvents(hubitat.zwave.Command cmd) {
    Integer position = cmd.value as Integer
    String switchValue = "off"
    String windowShadeState = "closed"
-   if (position > 0 && position < 100) {
+   if (position > 0 && position < 99) {
       switchValue = "on"
       windowShadeState = "open"
    } 
