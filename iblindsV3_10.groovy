@@ -17,6 +17,7 @@
  *   		Update Gassgs, Gary G, 10-06-21 - Start Position Change Open/Close commands, Fixed Position Attribute, Fixed update when button pushed
  *     		Update Gassgs, Gary G, 10-11-21 - Added stop command while blind is moving over a duration
  *      	Update Gassgs, Gary G, 11-22-21 - Fixed Battery level attribute update
+ *          Update Rob F, 1-5-22 - Fixed dimmer handler 99/100 limit
  *
  */
 metadata {
