@@ -17,6 +17,8 @@
  *   		Update Gassgs, Gary G, 10-06-21 - Start Position Change Open/Close commands, Fixed Position Attribute, Fixed update when button pushed
  *     		Update Gassgs, Gary G, 10-11-21 - Added stop command while blind is moving over a duration
  *      	Update Gassgs, Gary G, 11-22-21 - Fixed Battery level attribute update
+ *          Update Rob F, 1-5-22 - Fixed dimmer handler 99/100 limit
+ *          Update Rob F, 1-5-22 - Get level after set to validate change
  *
  */
 metadata {
@@ -114,7 +116,7 @@ private dimmerEvents(hubitat.zwave.Command cmd) {
    Integer position = cmd.value as Integer
    String switchValue = "off"
    String windowShadeState = "closed"
-   if (position > 0 && position < 100) {
+   if (position > 0 && position < 99) {
       switchValue = "on"
       windowShadeState = "open"
    } 
@@ -189,7 +191,11 @@ def setLevel(value, duration=0) {
     }
     def setLevel = reverse ? 99 - level : level
     def dimmingDuration = duration < 128 ? duration : 128 + Math.round(duration / 60)
-    zwave.switchMultilevelV2.switchMultilevelSet(value: setLevel, dimmingDuration: dimmingDuration).format()
+    def delayDuration = ((dimmingDuration + 2 )* 1000)
+    delayBetween([
+        zwave.switchMultilevelV2.switchMultilevelSet(value: setLevel, dimmingDuration: dimmingDuration).format(),
+        zwave.switchMultilevelV1.switchMultilevelGet().format(),
+    ], delayDuration)
 }
 
 def endDuration(){
